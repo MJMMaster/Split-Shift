@@ -27,7 +27,7 @@ public class SwitchInteractable : InteractableBase, IInteractable
         hasBeenUsed = true;
 
         Debug.Log($"{name} switched {(isOn ? "ON" : "OFF")}");
-
+        MessageDisplay.Instance?.ShowMessage($"{name} switched {(isOn ? "ON" : "OFF")}");
         UpdateSwitchColor();
 
         // Call linked door if assigned

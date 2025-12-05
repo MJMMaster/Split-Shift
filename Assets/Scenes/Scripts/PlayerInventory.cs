@@ -9,11 +9,10 @@ public class PlayerInventory : MonoBehaviour
 
     private void Awake()
     {
-        // Singleton setup
         if (Instance == null)
         {
             Instance = this;
-            DontDestroyOnLoad(gameObject);   // Inventory persists between scenes
+            DontDestroyOnLoad(gameObject);
         }
         else
         {
@@ -22,9 +21,6 @@ public class PlayerInventory : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Adds an item ID to the inventory.
-    /// </summary>
     public void AddItem(string itemID)
     {
         if (string.IsNullOrEmpty(itemID))
@@ -34,19 +30,23 @@ public class PlayerInventory : MonoBehaviour
         }
 
         if (items.Add(itemID))
+        {
             Debug.Log($"[Inventory] Added: {itemID}");
+            MessageDisplay.Instance?.ShowMessage($"[Inventory] Added: {itemID}");
+        }
         else
+        {
             Debug.Log($"[Inventory] Already have: {itemID}");
+            MessageDisplay.Instance?.ShowMessage($"[Inventory] Already have: {itemID}");
+        }
     }
 
-    /// <summary>
-    /// Removes an item (used for consumeItem doors).
-    /// </summary>
     public bool RemoveItem(string itemID)
     {
         if (items.Remove(itemID))
         {
             Debug.Log($"[Inventory] Removed: {itemID}");
+            MessageDisplay.Instance?.ShowMessage($"[Inventory] Removed: {itemID}");
             return true;
         }
 
@@ -54,17 +54,11 @@ public class PlayerInventory : MonoBehaviour
         return false;
     }
 
-    /// <summary>
-    /// Checks if the inventory contains a given item ID.
-    /// </summary>
     public bool HasItem(string itemID)
     {
         return items.Contains(itemID);
     }
 
-    /// <summary>
-    /// Debug helper: prints all items.
-    /// </summary>
     public void PrintInventory()
     {
         Debug.Log($"[Inventory] Items: {string.Join(", ", items)}");

@@ -21,7 +21,7 @@ public class HeroController : MonoBehaviour
         pawn.Move(new Vector2(moveX, 0));
 
         // Primary (jump or ability)
-        if (Input.GetButtonDown("Submit"))
+        if (Input.GetButtonDown("Jump"))
         {
             pawn.PrimaryAction();
         }
@@ -30,6 +30,10 @@ public class HeroController : MonoBehaviour
         if (Input.GetButtonDown("Fire1"))
         {
             pawn.SecondaryAction();
+        }
+        if (Input.GetButtonDown("Submit"))
+        {
+            pawn.ThirdAction();
         }
     }
 }

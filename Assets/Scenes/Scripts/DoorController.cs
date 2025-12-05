@@ -22,25 +22,48 @@ public class DoorController : MonoBehaviour, ISaveable
     private Coroutine moveRoutine;
     private Renderer doorRenderer;
 
-    private SaveableObject saveableObject; // reference for unique ID
+    private SaveableObject saveableObject;
 
     private void Awake()
     {
-        closedPosition = transform.position;
-        openPosition = closedPosition + new Vector3(0, openHeight, 0);
-
-        doorRenderer = GetComponent<Renderer>();
         saveableObject = GetComponent<SaveableObject>();
         if (saveableObject == null)
             Debug.LogError($"{name} is missing SaveableObject!");
+
+        closedPosition = transform.position;
+        openPosition = closedPosition + new Vector3(0, openHeight, 0);
+        doorRenderer = GetComponent<Renderer>();
         UpdateDoorColor();
     }
 
-    // -------------------------------
-    // DOOR LOGIC
-    // -------------------------------
+    private void Start()
+    {
+        // Delay restore slightly to ensure all systems initialize
+        StartCoroutine(RestoreStateDelayed());
+    }
 
-    public virtual void ToggleDoor()
+    private IEnumerator RestoreStateDelayed()
+    {
+        yield return null; // wait one frame
+
+        var sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        object savedState = GameManager.Instance?.GetObjectComponentState(saveableObject.UniqueID, GetType().Name, sceneName);
+
+        if (savedState != null)
+        {
+            RestoreState(savedState);
+        }
+        else
+        {
+            // No saved state: ensure door starts closed
+            SetDoorInstant(false);
+        }
+    }
+
+    // -------------------------------
+    // Door logic
+    // -------------------------------
+    public void ToggleDoor()
     {
         if (isLocked) return;
 
@@ -50,15 +73,18 @@ public class DoorController : MonoBehaviour, ISaveable
 
     public void OpenDoor()
     {
-        if (isLocked) return;
+        if (isLocked || isOpen) return;
 
         isOpen = true;
         Debug.Log($"{name} opened!");
+        MessageDisplay.Instance?.ShowMessage($"{name} opened!");
+
 
         if (moveRoutine != null) StopCoroutine(moveRoutine);
         moveRoutine = StartCoroutine(MoveDoorRoutine(openPosition));
 
         UpdateDoorColor();
+        GameManager.Instance?.SaveSceneState();
 
         if (autoClose)
             StartCoroutine(AutoCloseRoutine());
@@ -66,13 +92,18 @@ public class DoorController : MonoBehaviour, ISaveable
 
     public void CloseDoor()
     {
+        if (!isOpen) return;
+
         isOpen = false;
         Debug.Log($"{name} closed!");
+        MessageDisplay.Instance?.ShowMessage($"{name} closed!");
+
 
         if (moveRoutine != null) StopCoroutine(moveRoutine);
         moveRoutine = StartCoroutine(MoveDoorRoutine(closedPosition));
 
         UpdateDoorColor();
+        GameManager.Instance?.SaveSceneState();
     }
 
     private IEnumerator MoveDoorRoutine(Vector3 target)
@@ -82,11 +113,10 @@ public class DoorController : MonoBehaviour, ISaveable
             transform.position = Vector3.MoveTowards(
                 transform.position,
                 target,
-                moveSpeed * Time.deltaTime);
-
+                moveSpeed * Time.deltaTime
+            );
             yield return null;
         }
-
         transform.position = target;
     }
 
@@ -106,16 +136,21 @@ public class DoorController : MonoBehaviour, ISaveable
     {
         isLocked = false;
         Debug.Log($"{name} unlocked!");
+        MessageDisplay.Instance?.ShowMessage($"{name} unlocked!");
+        GameManager.Instance?.SaveSceneState();
     }
 
-    // -------------------------------
-    // SAVE SYSTEM
-    // -------------------------------
-
-    public string GetUniqueID()
+    private void SetDoorInstant(bool open)
     {
-        return saveableObject.UniqueID;
+        isOpen = open;
+        transform.position = open ? openPosition : closedPosition;
+        UpdateDoorColor();
     }
+
+    // -------------------------------
+    // ISaveable Implementation
+    // -------------------------------
+    public string GetUniqueID() => saveableObject.UniqueID;
 
     public object CaptureState()
     {
@@ -127,26 +162,21 @@ public class DoorController : MonoBehaviour, ISaveable
         };
     }
 
-    private void SetDoorInstant(bool open)
-    {
-        isOpen = open;
-
-        Vector3 target = open ? openPosition : closedPosition;
-
-        // Snap instantly
-        transform.position = target;
-
-        UpdateDoorColor();
-    }
     public void RestoreState(object state)
     {
-        var data = (DoorSaveData)state;
+        if (state is DoorSaveData data)
+        {
+            isLocked = data.isLocked;
 
-        isOpen = data.isOpen;
-        isLocked = data.isLocked;
-        transform.position = data.position;
-
-        SetDoorInstant(isOpen);
+            // Only open if allowed
+            isOpen = data.isOpen;
+            SetDoorInstant(isOpen);
+        }
+        else
+        {
+            Debug.LogWarning($"DoorController.RestoreState received invalid state: {state?.GetType()}");
+            SetDoorInstant(false); // fallback
+        }
     }
 }
 

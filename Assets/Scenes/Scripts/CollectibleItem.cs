@@ -23,6 +23,8 @@ public class CollectibleItem : InteractableBase, IInteractable, ISaveable
         collected = true;
 
         Debug.Log($"Collected: {itemID}");
+        MessageDisplay.Instance?.ShowMessage($"Collected: {itemID}");
+
 
         // Hide the object
         gameObject.SetActive(false);

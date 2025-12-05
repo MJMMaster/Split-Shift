@@ -5,16 +5,17 @@ TagManager:
   serializedVersion: 3
   tags:
   - Door
+  - Ladder
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - Player
   - Water
   - UI
-  - 
-  - 
-  - 
+  - Obstacle
+  - Floor
+  - Enemy
   - 
   - 
   - 

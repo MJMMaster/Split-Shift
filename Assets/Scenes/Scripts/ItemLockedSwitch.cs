@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using static UnityEditor.Progress;
 
 [RequireComponent(typeof(SaveableObject))]
 public class ItemLockedSwitch : SwitchInteractable, ISaveable
@@ -9,9 +10,10 @@ public class ItemLockedSwitch : SwitchInteractable, ISaveable
     public bool consumeItem = false;
 
     [Header("Connected Doors")]
-    public DoorController[] doors;  // assign multiple doors in Inspector
+    public DoorController[] doors;
 
-    private bool hasBeenUsed = false;
+    private bool hasBeenUsed = false;      // switch has been used at least once
+    private bool doorsUnlocked = false;    // doors are unlocked
     private SaveableObject saveable;
 
     private void Awake()
@@ -21,45 +23,70 @@ public class ItemLockedSwitch : SwitchInteractable, ISaveable
 
     public override void Interact()
     {
-        // Check for item
-        if (!string.IsNullOrEmpty(requiredItemID))
+        // If doors are not unlocked yet, try unlocking first
+        if (!doorsUnlocked)
         {
-            if (!PlayerInventory.Instance.HasItem(requiredItemID))
-            {
-                Debug.Log("Switch is locked. Missing item: " + requiredItemID);
-                return;
-            }
-
-            // Optional: consume the key
-            if (consumeItem)
-            {
-                PlayerInventory.Instance.RemoveItem(requiredItemID);
-            }
+            TryUnlockDoors();
+        }
+        else
+        {
+            // Doors are unlocked: toggle all doors
+            ToggleDoors();
         }
 
-        // Unlock all connected doors
+        // Mark switch as used for visuals
+        hasBeenUsed = true;
+        UpdateSwitchVisuals();
+    }
+
+    private void TryUnlockDoors()
+    {
+        // Only check for key if required
+        if (!string.IsNullOrEmpty(requiredItemID) && !PlayerInventory.Instance.HasItem(requiredItemID))
+        {
+            Debug.Log("Switch is locked. Missing item: " + requiredItemID);
+            MessageDisplay.Instance?.ShowMessage("Switch is locked. Missing item: " + requiredItemID);
+            return;
+        }
+
+        // Optionally consume key
+        if (consumeItem)
+            PlayerInventory.Instance.RemoveItem(requiredItemID);
+
+        // Unlock all doors
         if (doors != null)
         {
             foreach (var d in doors)
+                d.UnlockDoor();
+        }
+
+        doorsUnlocked = true;
+        Debug.Log("Doors unlocked. You can now toggle them freely.");
+        MessageDisplay.Instance?.ShowMessage("Doors unlocked. You can now toggle them freely.");
+
+    }
+
+    private void ToggleDoors()
+    {
+        if (doors == null) return;
+
+        foreach (var d in doors)
+        {
+            if (d != null)
             {
-                if (d != null)
-                    d.UnlockDoor();
+                if (d.isOpen) d.CloseDoor();
+                else d.OpenDoor();
             }
         }
 
-        // Mark as used
-        hasBeenUsed = true;
-
-        // Trigger switch behavior (color change, animation, Unity events, etc.)
-        base.Interact();
+        Debug.Log("Doors toggled!");
     }
 
     // ===================
-    // ISaveable interface
+    // ISaveable
     // ===================
     public object CaptureState()
     {
-        // Save whether the switch has been used and current state of doors
         DoorSaveData[] doorsData = null;
         if (doors != null && doors.Length > 0)
         {
@@ -79,6 +106,7 @@ public class ItemLockedSwitch : SwitchInteractable, ISaveable
         return new SwitchSaveData
         {
             hasBeenUsed = this.hasBeenUsed,
+            doorsUnlocked = this.doorsUnlocked,
             doorsData = doorsData
         };
     }
@@ -86,8 +114,8 @@ public class ItemLockedSwitch : SwitchInteractable, ISaveable
     public void RestoreState(object state)
     {
         var data = (SwitchSaveData)state;
-
         hasBeenUsed = data.hasBeenUsed;
+        doorsUnlocked = data.doorsUnlocked;
 
         if (doors != null && data.doorsData != null)
         {
@@ -98,23 +126,25 @@ public class ItemLockedSwitch : SwitchInteractable, ISaveable
             }
         }
 
-        // Update visuals based on current state
-        if (hasBeenUsed)
-            base.Interact(); // triggers color change/events if needed
+        UpdateSwitchVisuals();
     }
 
-    public string GetUniqueID()
+    private void UpdateSwitchVisuals()
     {
-        return saveable.UniqueID;
+        // Example: change color if switch has been used
+        if (hasBeenUsed)
+        {
+            // e.g., material/color change
+        }
     }
+
+    public string GetUniqueID() => saveable.UniqueID;
 }
 
-// ===================
-// Save data struct
-// ===================
 [Serializable]
 public struct SwitchSaveData
 {
     public bool hasBeenUsed;
+    public bool doorsUnlocked;
     public DoorSaveData[] doorsData;
 }
