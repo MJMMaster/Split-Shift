@@ -7,6 +7,10 @@ public class SwitchInteractable : InteractableBase, IInteractable
     public bool isOn = false;
     public bool oneTimeUse = false;
 
+    [Header("Item Requirement (Optional)")]
+    public string requiredItemID;   // Leave empty for normal switch
+    public bool consumeItem = false;
+
     [Header("Visual Feedback")]
     public Renderer switchRenderer;
 
@@ -21,23 +25,41 @@ public class SwitchInteractable : InteractableBase, IInteractable
 
     public override void Interact()
     {
-        if (oneTimeUse && hasBeenUsed) return;
+        //  One-time use protection
+        if (oneTimeUse && hasBeenUsed)
+            return;
 
+        //  Item lock check
+        if (!string.IsNullOrEmpty(requiredItemID))
+        {
+            if (!PlayerInventory.Instance.HasItem(requiredItemID))
+            {
+                Debug.Log("Switch is locked. Missing item: " + requiredItemID);
+                MessageDisplay.Instance?.ShowMessage("Missing item: " + requiredItemID);
+                return;
+            }
+
+            if (consumeItem)
+                PlayerInventory.Instance.RemoveItem(requiredItemID);
+        }
+
+        //  Toggle switch
         isOn = !isOn;
         hasBeenUsed = true;
 
         Debug.Log($"{name} switched {(isOn ? "ON" : "OFF")}");
         MessageDisplay.Instance?.ShowMessage($"{name} switched {(isOn ? "ON" : "OFF")}");
+
         UpdateSwitchColor();
 
-        // Call linked door if assigned
+        //  Linked door logic
         if (linkedDoor != null)
         {
             if (isOn) linkedDoor.OpenDoor();
             else linkedDoor.CloseDoor();
         }
 
-        // Trigger UnityEvents
+        //  Unity Events
         if (isOn) OnSwitchOn?.Invoke();
         else OnSwitchOff?.Invoke();
     }

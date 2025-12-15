@@ -2,25 +2,24 @@ using UnityEngine;
 
 public class InternController : MonoBehaviour
 {
+    [Header("References")]
     public InternPawn pawn;
+
 
     private float horizontalInput;
 
     private void Update()
     {
-        // --- Movement Input ---
-        // Supports joystick or keyboard
-        horizontalInput = Input.GetAxis("Horizontal");
+        if (pawn == null) return;
 
-        // --- Interact Input ---
-        if (Input.GetButtonDown("Submit"))
-        {
-            pawn.Interact();
-        }
+        // --- Movement Input (keyboard or joystick) ---
+        horizontalInput = Input.GetAxis("Horizontal");
     }
 
     private void FixedUpdate()
     {
+        if (pawn == null) return;
+
         pawn.Move(new Vector3(horizontalInput, 0f, 0f));
     }
 }

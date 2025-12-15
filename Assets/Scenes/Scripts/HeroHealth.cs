@@ -1,7 +1,7 @@
 using UnityEngine;
 
-[RequireComponent(typeof(SaveableObject))] // optional if you use saving
-public class HeroHealth : Health
+[RequireComponent(typeof(SaveableObject))]
+public class HeroHealth : Health, ISaveable
 {
     [Header("Damage Settings")]
     public float touchDamage = 10f;
@@ -9,11 +9,13 @@ public class HeroHealth : Health
 
     private float lastTouchTime = -999f;
     private HeroPawn movement;
+    private SaveableObject saveable;
 
     protected override void Awake()
     {
         base.Awake();
         movement = GetComponent<HeroPawn>();
+        saveable = GetComponent<SaveableObject>();
     }
 
     protected override void OnDamaged(float amount)
@@ -50,14 +52,43 @@ public class HeroHealth : Health
     {
         Debug.Log($"Respawning hero at {position} with HP={health}");
 
-        // Move player FIRST
         transform.position = position;
-
-        // Reset death state & restore health
         Revive(health);
 
-        // Ensure movement is back on
         if (movement != null)
             movement.enabled = true;
     }
+
+    // =========================
+    // ISaveable IMPLEMENTATION
+    // =========================
+
+    [System.Serializable]
+    public struct HeroHealthSaveData
+    {
+        public float currentHealth;
+        public bool isDead;
+    }
+
+    public object CaptureState()
+    {
+        return new HeroHealthSaveData
+        {
+            currentHealth = currentHealth,
+            isDead = IsDead
+        };
+    }
+
+    public void RestoreState(object state)
+    {
+        if (state is HeroHealthSaveData data)
+        {
+            Revive(data.currentHealth);
+
+            if (movement != null)
+                movement.enabled = !data.isDead;
+        }
+    }
+
+    public string GetUniqueID() => saveable.UniqueID;
 }

@@ -20,17 +20,21 @@ public class GameManager : MonoBehaviour
 
     private readonly HashSet<string> excludedComponents = new()
     {
-        "PlayerHealth",
+        "HeroHealth",
         "HeroPawn",
         "PlayerPawn",
     };
 
     private void Awake()
     {
-        if (Instance != null) { Destroy(gameObject); return; }
+        if (Instance != null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         Instance = this;
         DontDestroyOnLoad(gameObject);
-
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
@@ -52,7 +56,6 @@ public class GameManager : MonoBehaviour
     public void SaveSceneState()
     {
         string sceneName = SceneManager.GetActiveScene().name;
-
         var sceneObjects = new Dictionary<string, Dictionary<string, object>>();
 
         var allMono = Object.FindObjectsByType<MonoBehaviour>(
@@ -71,7 +74,7 @@ public class GameManager : MonoBehaviour
 
                 string compName = saveable.GetType().Name;
 
-                // Skip player health + position
+                //  Do not autosave player
                 if (excludedComponents.Contains(compName))
                     continue;
 
@@ -107,31 +110,27 @@ public class GameManager : MonoBehaviour
 
                 string compName = saveable.GetType().Name;
 
-                // Skip restoring player health + position
                 if (excludedComponents.Contains(compName))
                     continue;
 
-                if (allSceneStates.TryGetValue(sceneName, out var objDict))
+                if (sceneObjects.TryGetValue(so.UniqueID, out var compDict))
                 {
-                    if (objDict.TryGetValue(so.UniqueID, out var compDict))
+                    if (compDict.TryGetValue(compName, out object savedData))
                     {
-                        if (compDict.TryGetValue(compName, out object savedData))
+                        try
                         {
-                            try
-                            {
-                                saveable.RestoreState(savedData);
-                            }
-                            catch (System.Exception e)
-                            {
-                                Debug.LogError($"Error restoring {compName} on {so.UniqueID}: {e}");
-                            }
+                            saveable.RestoreState(savedData);
+                        }
+                        catch (System.Exception e)
+                        {
+                            Debug.LogError($"Restore error on {so.UniqueID}: {e}");
                         }
                     }
                 }
             }
         }
 
-        Debug.Log($"[Autosave] Scene '{sceneName}' restored ({sceneObjects.Count} objects).");
+        Debug.Log($"[Autosave] Scene '{sceneName}' restored.");
     }
 
     // -----------------------------------------
@@ -142,6 +141,9 @@ public class GameManager : MonoBehaviour
         if (playerTransform == null)
             CachePlayerReferences();
 
+        if (playerTransform == null || playerHealth == null)
+            return;
+
         checkpoint = new PlayerCheckpointData
         {
             sceneName = SceneManager.GetActiveScene().name,
@@ -150,7 +152,7 @@ public class GameManager : MonoBehaviour
             health = playerHealth.currentHealth
         };
 
-        Debug.Log("[Checkpoint] Saved player position + health.");
+        Debug.Log("[Checkpoint] Saved player data.");
     }
 
     public void LoadCheckpoint()
@@ -161,32 +163,81 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        SceneManager.sceneLoaded -= OnCheckpointSceneLoaded;
+        SceneManager.sceneLoaded += OnCheckpointSceneLoaded;
+
         SceneManager.LoadScene(checkpoint.sceneName);
+    }
 
-        SceneManager.sceneLoaded += (scene, mode) =>
-        {
-            CachePlayerReferences();
+    private void OnCheckpointSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        SceneManager.sceneLoaded -= OnCheckpointSceneLoaded;
 
-            playerTransform.position = checkpoint.position;
-            playerTransform.eulerAngles = checkpoint.rotation;
-            playerHealth.currentHealth = checkpoint.health;
+        CachePlayerReferences();
 
-            Debug.Log("[Checkpoint] Player restored.");
-        };
+        if (playerTransform == null || playerHealth == null)
+            return;
+
+        playerTransform.position = checkpoint.position;
+        playerTransform.eulerAngles = checkpoint.rotation;
+
+        playerHealth.Revive(checkpoint.health);
+
+        Debug.Log("[Checkpoint] Player restored.");
     }
 
     // -----------------------------------------
-    // Utility
+    //        CROSS-SCENE HERO WALL REMOVAL
     // -----------------------------------------
-    public object GetObjectComponentState(string uniqueID, string componentName, string sceneName = null)
+    public void TriggerHeroWallRemoval(string wallID)
     {
-        sceneName ??= SceneManager.GetActiveScene().name;
-        if (allSceneStates.TryGetValue(sceneName, out var sceneObjects))
+        string heroScene = "Hero"; //  Change to your real hero scene name
+
+        if (!allSceneStates.ContainsKey(heroScene))
+            allSceneStates[heroScene] = new Dictionary<string, Dictionary<string, object>>();
+
+        if (!allSceneStates[heroScene].ContainsKey(wallID))
+            allSceneStates[heroScene][wallID] = new Dictionary<string, object>();
+
+        allSceneStates[heroScene][wallID]["HeroRemovableWall"] =
+            new HeroRemovableWall.WallSaveData { isActive = false };
+
+
+        Debug.Log($"[Cross-Scene] Hero wall {wallID} removed.");
+    }
+
+    // =========================================
+    //     CROSS-SCENE INTERN ITEM SPAWN
+    // =========================================
+
+    public void TriggerInternItemSpawn(string itemID)
+    {
+        string internScene = "Intern"; // must match scene name exactly
+
+        if (!allSceneStates.ContainsKey(internScene))
+            allSceneStates[internScene] = new Dictionary<string, Dictionary<string, object>>();
+
+        if (!allSceneStates[internScene].ContainsKey(itemID))
+            allSceneStates[internScene][itemID] = new Dictionary<string, object>();
+
+        allSceneStates[internScene][itemID]["InternItemSpawner"] = true;
+
+        Debug.Log($"[Cross-Scene] Intern item '{itemID}' queued for spawn.");
+    }
+    public T FindSaveableByID<T>(string id) where T : MonoBehaviour
+    {
+        var all = FindObjectsByType<MonoBehaviour>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None
+        );
+
+        foreach (var obj in all)
         {
-            if (sceneObjects.TryGetValue(uniqueID, out var componentDict))
+            if (obj is T t)
             {
-                if (componentDict.TryGetValue(componentName, out object state))
-                    return state;
+                var saveable = obj.GetComponent<SaveableObject>();
+                if (saveable != null && saveable.UniqueID == id)
+                    return t;
             }
         }
         return null;
@@ -195,6 +246,22 @@ public class GameManager : MonoBehaviour
     public bool IsObjectComponentSaved(string uniqueID, string componentName, string sceneName = null)
     {
         return GetObjectComponentState(uniqueID, componentName, sceneName) != null;
+    }
+
+    public object GetObjectComponentState(string uniqueID, string componentName, string sceneName = null)
+    {
+        sceneName ??= SceneManager.GetActiveScene().name;
+
+        if (allSceneStates.TryGetValue(sceneName, out var sceneObjects))
+        {
+            if (sceneObjects.TryGetValue(uniqueID, out var componentDict))
+            {
+                if (componentDict.TryGetValue(componentName, out object state))
+                    return state;
+            }
+        }
+
+        return null;
     }
 }
 

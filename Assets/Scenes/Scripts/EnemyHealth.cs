@@ -6,7 +6,11 @@ public class EnemyHealth : Health, ISaveable
 {
     [Header("Optional Health Bar")]
     public HealthBarSpawner healthBarSpawner;
-    
+
+    [Header("Intern Item Drop")]
+    public bool dropsInternItem = false;
+    public string internItemID;
+
     private bool stateRestored = false;
     private SaveableObject saveable;
 
@@ -18,12 +22,13 @@ public class EnemyHealth : Health, ISaveable
 
         if (healthBarSpawner == null)
             healthBarSpawner = GetComponent<HealthBarSpawner>();
-        // Only initialize health if not restored from save
+
         if (!stateRestored && currentHealth <= 0f)
             currentHealth = maxHealth;
     }
 
     public void MarkStateRestored() => stateRestored = true;
+
     protected override void OnDamaged(float amount)
     {
         base.OnDamaged(amount);
@@ -34,14 +39,24 @@ public class EnemyHealth : Health, ISaveable
     protected override void Die()
     {
         base.Die();
-        gameObject.SetActive(false); // Disable instead of destroy
+        gameObject.SetActive(false);
         healthBarSpawner?.gameObject.SetActive(false);
+
+        // Trigger Intern Item Drop
+        if (dropsInternItem && !string.IsNullOrEmpty(internItemID))
+        {
+            GameManager.Instance.TriggerInternItemSpawn(internItemID);
+            MessageDisplay.Instance?.ShowMessage("Something changed elsewhere...");
+            Debug.Log($"[Enemy Drop] Intern item triggered: {internItemID}");
+        }
+
         GameManager.Instance?.SaveSceneState();
     }
 
     protected override void OnDeath()
     {
         Debug.Log("Enemy died!");
+        // Everything needed is handled in Die(), no need for DropItem() call.
     }
 
     // =========================
@@ -62,11 +77,8 @@ public class EnemyHealth : Health, ISaveable
         {
             currentHealth = data.currentHealth;
             gameObject.SetActive(data.isActive);
-
-            // Mark that state was restored to prevent Awake from overwriting
             MarkStateRestored();
 
-            // Update health bar if any
             healthBarSpawner?.GetComponent<HealthBar>()?.Initialize(this);
 
             if (currentHealth <= 0)
