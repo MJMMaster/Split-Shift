@@ -7,6 +7,9 @@ public class CollectibleItem : InteractableBase, IInteractable, ISaveable
     [Header("Item Settings")]
     public string itemID = "Keycard";
 
+    [Header("Audio")]
+    public AudioClip collectClip;
+
     private bool collected = false;
     private SaveableObject saveable;
 
@@ -19,14 +22,20 @@ public class CollectibleItem : InteractableBase, IInteractable, ISaveable
     {
         if (collected) return;
 
-        PlayerInventory.Instance.AddItem(itemID);
         collected = true;
+
+        PlayerInventory.Instance.AddItem(itemID);
 
         Debug.Log($"Collected: {itemID}");
         MessageDisplay.Instance?.ShowMessage($"Collected: {itemID}");
 
+        //  Play collect sound
+        if (collectClip != null && AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySFX(collectClip);
+        }
 
-        // Hide the object
+        // Hide the object AFTER audio is triggered
         gameObject.SetActive(false);
     }
 
@@ -46,8 +55,6 @@ public class CollectibleItem : InteractableBase, IInteractable, ISaveable
     {
         var data = (CollectibleSaveData)state;
         collected = data.collected;
-
-        // Restore active state correctly
         gameObject.SetActive(data.isActive);
     }
 

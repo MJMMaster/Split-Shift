@@ -10,6 +10,7 @@ public class GameManager : MonoBehaviour
     // ---------- WORLD AUTOSAVE ----------
     // sceneName -> objectID -> componentName -> saved state
     private Dictionary<string, Dictionary<string, Dictionary<string, object>>> allSceneStates = new();
+    private Dictionary<string, bool> defeatedBosses = new(); // bossID -> defeated
 
     // ---------- CHECKPOINT SAVE ----------
     private PlayerCheckpointData checkpoint;
@@ -209,7 +210,6 @@ public class GameManager : MonoBehaviour
     // =========================================
     //     CROSS-SCENE INTERN ITEM SPAWN
     // =========================================
-
     public void TriggerInternItemSpawn(string itemID)
     {
         string internScene = "Intern"; // must match scene name exactly
@@ -224,6 +224,51 @@ public class GameManager : MonoBehaviour
 
         Debug.Log($"[Cross-Scene] Intern item '{itemID}' queued for spawn.");
     }
+
+    // =========================================
+    //     CROSS-SCENE BOSS DEFEAT TRACKING
+    // =========================================
+    public void MarkBossDefeated(string bossID, string bossScene = null)
+    {
+        bossScene ??= SceneManager.GetActiveScene().name;
+
+        // Existing scene-specific storage (optional)
+        if (!allSceneStates.ContainsKey(bossScene))
+            allSceneStates[bossScene] = new Dictionary<string, Dictionary<string, object>>();
+
+        if (!allSceneStates[bossScene].ContainsKey(bossID))
+            allSceneStates[bossScene][bossID] = new Dictionary<string, object>();
+
+        allSceneStates[bossScene][bossID]["BossDefeat"] = true;
+
+        // NEW: Global defeatedBosses tracking
+        defeatedBosses[bossID] = true;
+
+        Debug.Log($"[Cross-Scene] Boss '{bossID}' defeated (scene '{bossScene}').");
+    }
+
+    public bool IsBossDefeated(string bossID)
+    {
+        // First check global defeated bosses
+        if (defeatedBosses.TryGetValue(bossID, out bool defeated) && defeated)
+            return true;
+
+        // Fallback to scene-specific check (optional)
+        foreach (var sceneDict in allSceneStates.Values)
+        {
+            if (sceneDict.TryGetValue(bossID, out var compDict))
+            {
+                if (compDict.TryGetValue("BossDefeat", out var val) && val is bool b && b)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    // =========================================
+    //       HELPER FUNCTIONS (existing)
+    // =========================================
     public T FindSaveableByID<T>(string id) where T : MonoBehaviour
     {
         var all = FindObjectsByType<MonoBehaviour>(

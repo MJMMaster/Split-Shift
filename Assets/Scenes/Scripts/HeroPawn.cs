@@ -13,6 +13,7 @@ public class HeroPawn : Pawn
     public float dashDuration = 0.1f;        // How long the dash lasts
     public LayerMask dashObstacleMask;       // Obstacles that block dash
     public float dashRaycastOffset = 0.6f;   // Offset so raycast doesn't hit player
+    public AudioClip DashClip;
 
     private Rigidbody rb;
     private bool isGrounded;
@@ -26,6 +27,16 @@ public class HeroPawn : Pawn
         rb = GetComponent<Rigidbody>();
     }
 
+    private void Start()
+    {
+        if (HeroAbilityManager.Instance != null &&
+        HeroAbilityManager.Instance.showDashUnlockMessage)
+        {
+            MessageDisplay.Instance?.ShowMessage("Dash Unlocked!\n[E] to Dash");
+
+            HeroAbilityManager.Instance.showDashUnlockMessage = false;
+        }
+    }
     private void FixedUpdate()
     {
         Vector3 velocity = rb.linearVelocity;
@@ -88,10 +99,16 @@ public class HeroPawn : Pawn
 
     public void Dash()
     {
+        if (!HeroAbilityManager.Instance.dashUnlocked)
+        {
+            Debug.Log("Dash is locked!");
+            return;
+        }
+
         if (!canDash || moveDirection.x == 0) return;
 
         dashDirection = new Vector3(Mathf.Sign(moveDirection.x), 0, 0);
-
+        AudioManager.Instance?.PlaySFX(DashClip);
         // Raycast to detect obstacles
         Vector3 rayOrigin = transform.position + dashDirection * dashRaycastOffset;
         float maxDistance = dashDistance;

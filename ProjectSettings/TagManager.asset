@@ -6,6 +6,8 @@ TagManager:
   tags:
   - Door
   - Ladder
+  - Ball
+  - Paddle
   layers:
   - Default
   - TransparentFX

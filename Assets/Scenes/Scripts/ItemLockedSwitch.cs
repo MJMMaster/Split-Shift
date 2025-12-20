@@ -1,16 +1,14 @@
 using System;
 using UnityEngine;
-using static UnityEditor.Progress;
+using UnityEngine.Events;
+using System.Collections;
 
 [RequireComponent(typeof(SaveableObject))]
 public class ItemLockedSwitch : SwitchInteractable, ISaveable
 {
-    [Header("Item Requirement")]
-    public string requiredItemID;
-    public bool consumeItem = false;
-
     [Header("Connected Doors")]
     public DoorController[] doors;
+
 
     private bool hasBeenUsed = false;      // switch has been used at least once
     private bool doorsUnlocked = false;    // doors are unlocked
@@ -23,6 +21,8 @@ public class ItemLockedSwitch : SwitchInteractable, ISaveable
 
     public override void Interact()
     {
+        Debug.Log("ItemLockedSwitch Interact() called!");
+
         // If doors are not unlocked yet, try unlocking first
         if (!doorsUnlocked)
         {
@@ -46,6 +46,9 @@ public class ItemLockedSwitch : SwitchInteractable, ISaveable
         {
             Debug.Log("Switch is locked. Missing item: " + requiredItemID);
             MessageDisplay.Instance?.ShowMessage("Switch is locked. Missing item: " + requiredItemID);
+
+            // Play fail audio on next frame
+            StartCoroutine(PlayClipNextFrame(failClip));
             return;
         }
 
@@ -64,6 +67,8 @@ public class ItemLockedSwitch : SwitchInteractable, ISaveable
         Debug.Log("Doors unlocked. You can now toggle them freely.");
         MessageDisplay.Instance?.ShowMessage("Doors unlocked. You can now toggle them freely.");
 
+        // Play pass audio on next frame
+        StartCoroutine(PlayClipNextFrame(passClip));
     }
 
     private void ToggleDoors()
@@ -80,11 +85,47 @@ public class ItemLockedSwitch : SwitchInteractable, ISaveable
         }
 
         Debug.Log("Doors toggled!");
+
+        // Optional: play a pass clip when doors are toggled
+        StartCoroutine(PlayClipNextFrame(passClip));
     }
 
-    // ===================
+ 
+
+    // =========================
+    // Audio playback helper
+    // =========================
+    private IEnumerator PlayClipNextFrame(AudioClip clip)
+    {
+        yield return null; // wait 1 frame
+
+        if (clip == null)
+        {
+            Debug.LogWarning("Audio clip is null!");
+            yield break;
+        }
+
+        if (AudioManager.Instance != null && AudioManager.Instance.sfxSource != null)
+        {
+            AudioManager.Instance.PlaySFX(clip);
+        }
+        else
+        {
+            // fallback temporary AudioSource
+            GameObject tempGO = new GameObject("TempAudio");
+            tempGO.transform.position = transform.position;
+            AudioSource aSource = tempGO.AddComponent<AudioSource>();
+            aSource.spatialBlend = 0f; // 2D sound
+            aSource.volume = 1f;
+            aSource.clip = clip;
+            aSource.Play();
+            Destroy(tempGO, clip.length + 0.1f);
+        }
+    }
+
+    // =========================
     // ISaveable
-    // ===================
+    // =========================
     public object CaptureState()
     {
         DoorSaveData[] doorsData = null;
@@ -132,9 +173,9 @@ public class ItemLockedSwitch : SwitchInteractable, ISaveable
     private void UpdateSwitchVisuals()
     {
         // Example: change color if switch has been used
-        if (hasBeenUsed)
+        if (hasBeenUsed && switchRenderer != null)
         {
-            // e.g., material/color change
+            switchRenderer.material.color = doorsUnlocked ? Color.green : Color.red;
         }
     }
 

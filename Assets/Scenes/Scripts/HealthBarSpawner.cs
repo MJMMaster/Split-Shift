@@ -2,8 +2,12 @@ using UnityEngine;
 
 public class HealthBarSpawner : MonoBehaviour
 {
+    [Header("Health Bar Prefab")]
     public GameObject healthBarPrefab;
     public Vector3 offset = new Vector3(0, 2f, 0);
+
+    [Header("Optional Boss Target")]
+    public BossController bossTarget;
 
     private Health health;
     private Transform barInstance;
@@ -21,29 +25,31 @@ public class HealthBarSpawner : MonoBehaviour
             return;
         }
 
-        // Spawn health bar above the target
-        barInstance = Instantiate(
-            healthBarPrefab,
-            transform.position + offset,
-            Quaternion.identity
-        ).transform;
+        // Spawn health bar
+        barInstance = Instantiate(healthBarPrefab, transform.position + offset, Quaternion.identity).transform;
+        barInstance.SetParent(null); // independent in world space
 
-        // Make bar independent (not parented)
-        barInstance.SetParent(null);
-
-        // Initialize bar with the health reference
+        // Initialize bar
         var bar = barInstance.GetComponent<HealthBar>();
-        bar.Initialize(health);
-
-        // When the health dies, destroy the bar
-        health.OnDeathEvent += HandleDeath;
+        if (bossTarget != null)
+        {
+            bar.InitializeBoss(bossTarget);
+        }
+        else if (health != null)
+        {
+            bar.Initialize(health);
+            health.OnDeathEvent += HandleDeath; // destroy bar when health dies
+        }
+        else
+        {
+            Debug.LogWarning("No Health or BossController found on target!");
+        }
     }
 
     private void LateUpdate()
     {
         if (barInstance == null) return;
 
-        // Follow target position
         barInstance.position = transform.position + offset;
     }
 
@@ -57,7 +63,6 @@ public class HealthBarSpawner : MonoBehaviour
 
     private void OnDestroy()
     {
-        // If this object is destroyed normally, kill the bar as well
         if (barInstance != null)
         {
             Destroy(barInstance.gameObject);

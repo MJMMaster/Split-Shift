@@ -6,7 +6,7 @@ public abstract class Health : MonoBehaviour
     [Header("Health Settings")]
     public float maxHealth = 100f;
     public float currentHealth;
-
+    public AudioClip Ouch;
     public event Action OnDeathEvent;
     public bool IsDead { get; protected set; } = false; // protected setter
 
@@ -21,6 +21,7 @@ public abstract class Health : MonoBehaviour
         if (IsDead) return;
 
         currentHealth -= amount;
+        AudioManager.Instance?.PlaySFX(Ouch);
         OnDamaged(amount);
 
         if (currentHealth <= 0f)

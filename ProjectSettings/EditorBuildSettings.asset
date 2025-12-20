@@ -6,14 +6,11 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Scenes/StartScreen.unity
+    guid: 36253442cef29594196a5637b5fdea99
+  - enabled: 1
     path: Assets/Scenes/MainMenu.unity
     guid: 99c9720ab356a0642a771bea13969a05
-  - enabled: 1
-    path: Assets/Scenes/Hero.unity
-    guid: 18a342f9f8bd95546a0a5c8aa624978b
-  - enabled: 1
-    path: Assets/Scenes/Intern.unity
-    guid: d832ef91a2c781d49a0774c4713cf598
   - enabled: 1
     path: Assets/Scenes/Settings.unity
     guid: 73c0de2861abed34da8ebc49997868f4
@@ -21,8 +18,14 @@ EditorBuildSettings:
     path: Assets/Scenes/Credits.unity
     guid: 3ad8f5a3a3318f5468c5faef27b0a1b5
   - enabled: 1
-    path: Assets/Scenes/StartScreen.unity
-    guid: 36253442cef29594196a5637b5fdea99
+    path: Assets/Scenes/Intern.unity
+    guid: d832ef91a2c781d49a0774c4713cf598
+  - enabled: 1
+    path: Assets/Scenes/InternMinigame_BrickBreaker.unity
+    guid: e33dcdb90dc6d6a4db46b1766a2a4c16
+  - enabled: 1
+    path: Assets/Scenes/Hero.unity
+    guid: 18a342f9f8bd95546a0a5c8aa624978b
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

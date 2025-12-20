@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using System.Collections;
 
 public class SwitchInteractable : InteractableBase, IInteractable
 {
@@ -7,8 +8,12 @@ public class SwitchInteractable : InteractableBase, IInteractable
     public bool isOn = false;
     public bool oneTimeUse = false;
 
+    [Header("Audio")]
+    public AudioClip failClip;
+    public AudioClip passClip;
+
     [Header("Item Requirement (Optional)")]
-    public string requiredItemID;   // Leave empty for normal switch
+    public string requiredItemID;
     public bool consumeItem = false;
 
     [Header("Visual Feedback")]
@@ -25,17 +30,23 @@ public class SwitchInteractable : InteractableBase, IInteractable
 
     public override void Interact()
     {
-        //  One-time use protection
+        Debug.Log("SwitchInteractable Interact() called!");
+        Debug.Log("Interact() called on switch");
+
+        // One-time use protection
         if (oneTimeUse && hasBeenUsed)
             return;
 
-        //  Item lock check
+        // Item check
         if (!string.IsNullOrEmpty(requiredItemID))
         {
             if (!PlayerInventory.Instance.HasItem(requiredItemID))
             {
-                Debug.Log("Switch is locked. Missing item: " + requiredItemID);
+                // Show message first
                 MessageDisplay.Instance?.ShowMessage("Missing item: " + requiredItemID);
+
+                // Play fail clip on next frame to ensure it works
+                StartCoroutine(PlayClipNextFrame(failClip));
                 return;
             }
 
@@ -43,30 +54,58 @@ public class SwitchInteractable : InteractableBase, IInteractable
                 PlayerInventory.Instance.RemoveItem(requiredItemID);
         }
 
-        //  Toggle switch
+        // SUCCESS
         isOn = !isOn;
         hasBeenUsed = true;
 
-        Debug.Log($"{name} switched {(isOn ? "ON" : "OFF")}");
-        MessageDisplay.Instance?.ShowMessage($"{name} switched {(isOn ? "ON" : "OFF")}");
-
         UpdateSwitchColor();
 
-        //  Linked door logic
+        // Door logic
         if (linkedDoor != null)
         {
             if (isOn) linkedDoor.OpenDoor();
             else linkedDoor.CloseDoor();
         }
 
-        //  Unity Events
+        // Events
         if (isOn) OnSwitchOn?.Invoke();
         else OnSwitchOff?.Invoke();
+
+        // Play success clip on next frame
+        StartCoroutine(PlayClipNextFrame(passClip));
     }
 
     private void UpdateSwitchColor()
     {
         if (switchRenderer != null)
             switchRenderer.material.color = isOn ? Color.green : Color.red;
+    }
+
+    // =========================
+    // Audio playback coroutine
+    // =========================
+    private IEnumerator PlayClipNextFrame(AudioClip clip)
+    {
+        yield return null; // wait 1 frame
+
+        Debug.Log("Attempting to play clip: " + (clip ? clip.name : "NULL"));
+
+        if (AudioManager.Instance != null)
+        {
+            Debug.Log("AudioManager instance found, SFX source: " + (AudioManager.Instance.sfxSource ? "OK" : "NULL"));
+            AudioManager.Instance.PlaySFX(clip);
+        }
+        else
+        {
+            Debug.LogWarning("AudioManager not ready, using fallback AudioSource for clip: " + (clip ? clip.name : "NULL"));
+            GameObject tempGO = new GameObject("TempAudio");
+            tempGO.transform.position = transform.position;
+            AudioSource aSource = tempGO.AddComponent<AudioSource>();
+            aSource.spatialBlend = 0f;
+            aSource.volume = 1f;
+            aSource.clip = clip;
+            aSource.Play();
+            Destroy(tempGO, clip.length + 0.1f);
+        }
     }
 }

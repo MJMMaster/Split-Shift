@@ -53,15 +53,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -4216859302048453862, guid: 377835cb3fa2b9141894051f66db8b1f, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 3.0574625
+      value: 12.804253
       objectReference: {fileID: 0}
     - target: {fileID: -4216859302048453862, guid: 377835cb3fa2b9141894051f66db8b1f, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.004
+      value: 0.00000031483304
       objectReference: {fileID: 0}
     - target: {fileID: -4216859302048453862, guid: 377835cb3fa2b9141894051f66db8b1f, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 1.1762336
+      value: 1.3257017
       objectReference: {fileID: 0}
     - target: {fileID: -4216859302048453862, guid: 377835cb3fa2b9141894051f66db8b1f, type: 3}
       propertyPath: m_LocalRotation.w
@@ -166,6 +166,7 @@ MonoBehaviour:
   promptPrefab: {fileID: 5973975820160906931, guid: c2715d40c7cb47a468aaedefecae1d4f, type: 3}
   promptAnchor: {fileID: 3406580513731803083}
   itemID: Keycard
+  collectClip: {fileID: 8300000, guid: 07ec0a982477c03418fc9e7fe42b8148, type: 3}
 --- !u!4 &3210605236791739191 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -4216859302048453862, guid: 377835cb3fa2b9141894051f66db8b1f, type: 3}

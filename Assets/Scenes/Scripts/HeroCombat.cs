@@ -8,6 +8,7 @@ public class HeroCombat : MonoBehaviour
     public float attackRange = 2f; // how far the cone reaches
     [Range(1f, 180f)]
     public float attackAngle = 60f; // cone angle
+    public AudioClip attack;
 
     public LayerMask attackLayer;   // enemy layers
 
@@ -30,7 +31,7 @@ public class HeroCombat : MonoBehaviour
 
         // Broad-phase sphere
         Collider[] hits = Physics.OverlapSphere(transform.position, attackRange, attackLayer);
-
+        AudioManager.Instance?.PlaySFX(attack);
         int hitCount = 0;
         foreach (var hit in hits)
         {
@@ -45,6 +46,15 @@ public class HeroCombat : MonoBehaviour
                 {
                     hp.TakeDamage(attackDamage);
                     hitCount++;
+                }
+                else
+                {
+                    BossWeakPoint weakPoint = hit.GetComponent<BossWeakPoint>();
+                    if (weakPoint)
+                    {
+                        weakPoint.TakeDamage(attackDamage);
+                        hitCount++;
+                    }
                 }
             }
         }
